@@ -6,9 +6,13 @@
 <title>Me, Myself & I</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#075e54">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SelfChat">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script>window.process={env:{NODE_ENV:'production'}};window.global=window;</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body,#root{height:100%;width:100%;}
@@ -161,10 +165,6 @@ body{background:#ece5dd;font-family:'Segoe UI',Helvetica,Arial,sans-serif;overfl
 </head>
 <body>
 <div id="root"></div>
-<script>
-window.process = { env: {} };
-window.global = window;
-</script>
 <script type="text/babel">
 const {useState,useRef,useEffect} = React;
 
@@ -300,4 +300,592 @@ function NewChatModal({personas,onConfirm,onClose}) {
           )}
 
           {!addMode?(
-            <button className="modal-action-btn" style={{marginTop:10,width:'100%',padding:11}} onClick={()=>setAddMode(true)
+            <button className="modal-action-btn" style={{marginTop:10,width:'100%',padding:11}} onClick={()=>setAddMode(true)}>
+              + Create a new voice
+            </button>
+          ):(
+            <div className="inline-add-box">
+              <div className="field-label">{personas.length===0?'Create your first voice':'New voice'}</div>
+              <input className="text-field" value={newName} onChange={e=>setNewName(e.target.value)}
+                placeholder="e.g. Rational Me" maxLength={20} autoFocus style={{marginBottom:10}}/>
+              <div className="emoji-grid">
+                {EMOJIS.map(em=>(
+                  <button key={em} className={`emoji-opt ${newEmoji===em?'em-sel':''}`} onClick={()=>setNewEmoji(em)}>{em}</button>
+                ))}
+              </div>
+              <div className="color-row">
+                {PALETTE.map((c,i)=>(
+                  <button key={i} className={`color-dot ${newColorIdx===i?'c-sel':''}`}
+                    style={{background:c.accent}} onClick={()=>setNewColorIdx(i)}/>
+                ))}
+              </div>
+              <div style={{display:'flex',gap:8,marginTop:12}}>
+                <button className="modal-action-btn btn-green" style={{flex:1,padding:11}} onClick={confirmWithNew}>
+                  {personas.length===0?'Create & Start Chat':'Add voice & Start Chat'}
+                </button>
+                {personas.length>0 && <button className="modal-action-btn" onClick={()=>setAddMode(false)}>Cancel</button>}
+              </div>
+            </div>
+          )}
+        </div>
+        {!addMode && (
+          <div className="modal-footer">
+            <button className="modal-confirm-btn" onClick={confirm} disabled={sel.length===0}>
+              Start Chat →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   PERSONAS MODAL
+══════════════════════════════════════════════════════════ */
+function PersonasModal({personas,onUpdate,onClose}) {
+  const [editId,setEditId]=useState(null);
+  const [tempName,setTempName]=useState('');
+  const [tempEmoji,setTempEmoji]=useState('🧠');
+  const [tempColorIdx,setTempColorIdx]=useState(0);
+  const [addMode,setAddMode]=useState(false);
+  const [newName,setNewName]=useState('');
+  const [newEmoji,setNewEmoji]=useState('😎');
+  const [newColorIdx,setNewColorIdx]=useState(personas.length%PALETTE.length);
+
+  const startEdit = p => {setEditId(p.id);setTempName(p.name);setTempEmoji(p.emoji);setTempColorIdx(p.colorIdx||0);};
+  const saveEdit  = () => {
+    if(!tempName.trim()) return;
+    onUpdate({type:'edit',id:editId,name:tempName.trim(),emoji:tempEmoji,colorIdx:tempColorIdx});
+    setEditId(null);
+  };
+  const addPersona = () => {
+    if(!newName.trim()) return;
+    onUpdate({type:'add',name:newName.trim(),emoji:newEmoji,colorIdx:newColorIdx});
+    setNewName(''); setNewEmoji('😎'); setAddMode(false); setNewColorIdx((personas.length+1)%PALETTE.length);
+  };
+  const delPersona = id => {
+    if(window.confirm('Delete this voice? Its messages will remain but show as "Unknown".'))
+      onUpdate({type:'delete',id});
+  };
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+        <div className="modal-head">
+          <span className="modal-title">🎭 Manage Voices</span>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {personas.map(p=>{
+            const c=getColor(p); const isEditing=editId===p.id;
+            return (
+              <div key={p.id} className="p-card" style={{borderTop:`3px solid ${c.accent}`}}>
+                {isEditing?(
+                  <>
+                    <div className="p-card-row" style={{marginBottom:10}}>
+                      <span style={{fontSize:30}}>{tempEmoji}</span>
+                      <input className="text-field" style={{flex:1}} value={tempName}
+                        onChange={e=>setTempName(e.target.value)} maxLength={20} autoFocus/>
+                      <button className="save-btn" onClick={saveEdit}>✓</button>
+                    </div>
+                    <div className="emoji-grid">
+                      {EMOJIS.map(em=>(
+                        <button key={em} className={`emoji-opt ${tempEmoji===em?'em-sel':''}`} onClick={()=>setTempEmoji(em)}>{em}</button>
+                      ))}
+                    </div>
+                    <div className="field-label" style={{marginTop:10,marginBottom:4}}>Colour</div>
+                    <div className="color-row">
+                      {PALETTE.map((pc,i)=>(
+                        <button key={i} className={`color-dot ${tempColorIdx===i?'c-sel':''}`}
+                          style={{background:pc.accent}} onClick={()=>setTempColorIdx(i)}/>
+                      ))}
+                    </div>
+                  </>
+                ):(
+                  <div className="p-card-row">
+                    <span style={{fontSize:26,width:36,textAlign:'center'}}>{p.emoji}</span>
+                    <span className="p-card-name">{p.name}</span>
+                    <button className="p-card-btn" onClick={()=>startEdit(p)}>✏️</button>
+                    <button className="p-card-btn" style={{color:'#e74c3c'}} onClick={()=>delPersona(p.id)}>🗑</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {!addMode?(
+            <button className="modal-action-btn" style={{width:'100%',padding:12,marginTop:4}} onClick={()=>setAddMode(true)}>
+              + Add new voice
+            </button>
+          ):(
+            <div className="inline-add-box">
+              <div className="field-label">New voice</div>
+              <input className="text-field" value={newName} onChange={e=>setNewName(e.target.value)}
+                placeholder="e.g. Devil's Advocate" maxLength={20} autoFocus style={{marginBottom:10}}/>
+              <div className="emoji-grid">
+                {EMOJIS.map(em=>(
+                  <button key={em} className={`emoji-opt ${newEmoji===em?'em-sel':''}`} onClick={()=>setNewEmoji(em)}>{em}</button>
+                ))}
+              </div>
+              <div className="color-row">
+                {PALETTE.map((c,i)=>(
+                  <button key={i} className={`color-dot ${newColorIdx===i?'c-sel':''}`}
+                    style={{background:c.accent}} onClick={()=>setNewColorIdx(i)}/>
+                ))}
+              </div>
+              <div style={{display:'flex',gap:8,marginTop:12}}>
+                <button className="modal-action-btn btn-green" style={{flex:1,padding:11}} onClick={addPersona}>Add Voice</button>
+                <button className="modal-action-btn" onClick={()=>setAddMode(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS MODAL
+══════════════════════════════════════════════════════════ */
+function SettingsModal({settings,onUpdate,onExport,onImport,onClearAll,onClose}) {
+  const fileRef=useRef(null);
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+        <div className="modal-head">
+          <span className="modal-title">⚙️ Settings</span>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <label className="field-label">App name</label>
+          <input className="text-field" value={settings.appName||''}
+            onChange={e=>onUpdate({appName:e.target.value})} maxLength={30}/>
+
+          <span className="section-lbl">Backup & Restore</span>
+          <button className="settings-btn btn-export" onClick={onExport}>📤 Export full backup (.json)</button>
+          <button className="settings-btn btn-import" onClick={()=>fileRef.current.click()}>📥 Import backup (.json)</button>
+          <input ref={fileRef} type="file" accept=".json" style={{display:'none'}}
+            onChange={e=>{const f=e.target.files[0];if(f)onImport(f);e.target.value='';}}/>
+          <p className="hint">Exports all chats, voices, and settings. Import anytime to restore — even after clearing browser data.</p>
+
+          <span className="section-lbl" style={{marginTop:18}}>Danger Zone</span>
+          <button className="settings-btn btn-clear-all" onClick={onClearAll}>🗑️ Delete all chats & messages</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   ACTION SHEET
+══════════════════════════════════════════════════════════ */
+function ActionSheet({msg,onCopy,onDelete,onClose}) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="action-sheet" onClick={e=>e.stopPropagation()}>
+        <div className="action-preview">{msg.text.length>80?msg.text.slice(0,80)+'…':msg.text}</div>
+        <button className="action-btn" onClick={onCopy}><span>📋</span> Copy text</button>
+        <button className="action-btn action-danger" onClick={onDelete}><span>🗑️</span> Delete message</button>
+        <button className="action-btn action-cancel" onClick={onClose}><span>✕</span> Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════════════ */
+function Sidebar({open,onOpen,chats,personas,currentChatId,onSelect,onNewChat,onDelete,onRename,appName,onPersonas,onSettings}) {
+  const [renameId,setRenameId]=useState(null);
+  const [renameVal,setRenameVal]=useState('');
+
+  const startRename=(chat,e)=>{e.stopPropagation();setRenameId(chat.id);setRenameVal(chat.title||'');};
+  const finishRename=id=>{onRename(id,renameVal.trim());setRenameId(null);};
+
+  const sorted=[...chats].sort((a,b)=>b.updatedAt-a.updatedAt);
+
+  return (
+    <>
+      {open && <div className="sb-overlay" onClick={()=>onOpen(false)}/>}
+      <div className={`sidebar ${open?'sb-open':''}`}>
+        <div className="sb-head">
+          <span className="sb-appname">{appName}</span>
+          <button className="sb-close" onClick={()=>onOpen(false)}>✕</button>
+        </div>
+
+        <button className="new-chat-btn" onClick={()=>{onNewChat();onOpen(false);}}>+ New Chat</button>
+
+        <div className="chat-list">
+          {sorted.length===0 && <p className="hint" style={{padding:'20px 16px'}}>No chats yet. Start one!</p>}
+          {sorted.map(chat=>{
+            const lastMsg=chat.messages[chat.messages.length-1];
+            const lp=lastMsg?personas.find(p=>p.id===lastMsg.senderId):null;
+            const isActive=chat.id===currentChatId;
+            const pIcons=chat.personaIds.slice(0,2).map(pid=>personas.find(p=>p.id===pid)).filter(Boolean);
+            return (
+              <div key={chat.id} className={`chat-item ${isActive?'ci-active':''}`}
+                onClick={()=>{onSelect(chat.id);onOpen(false);}}>
+                <div className="ci-avatars">
+                  {pIcons.length>0?pIcons.map((p,i)=>(
+                    <span key={p.id} style={{fontSize:i===0?20:13,marginLeft:i?-4:0}}>{p.emoji}</span>
+                  )):'💬'}
+                </div>
+                <div className="ci-info">
+                  {renameId===chat.id?(
+                    <input className="rename-input" value={renameVal} autoFocus
+                      onChange={e=>setRenameVal(e.target.value)}
+                      onBlur={()=>finishRename(chat.id)}
+                      onKeyDown={e=>{if(e.key==='Enter')finishRename(chat.id);e.stopPropagation();}}
+                      onClick={e=>e.stopPropagation()}/>
+                  ):(
+                    <div className="ci-title">{chat.title||'Untitled Chat'}</div>
+                  )}
+                  <div className="ci-preview">
+                    {lastMsg?`${lp?lp.emoji+' ':''}${lastMsg.text.slice(0,35)}${lastMsg.text.length>35?'…':''}`:'No messages yet'}
+                  </div>
+                </div>
+                <div className="ci-right">
+                  {lastMsg&&<div className="ci-time">{fmtPreview(lastMsg.ts)}</div>}
+                  <div className="ci-actions">
+                    <button className="ci-btn" onClick={e=>startRename(chat,e)} title="Rename">✏️</button>
+                    <button className="ci-btn" onClick={e=>{e.stopPropagation();onDelete(chat.id);}} title="Delete">🗑</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="sb-bottom">
+          <button className="sb-bot-btn" onClick={()=>{onPersonas();onOpen(false);}}>🎭 Manage Voices</button>
+          <button className="sb-bot-btn" onClick={()=>{onSettings();onOpen(false);}}>⚙️ Settings</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   APP
+══════════════════════════════════════════════════════════ */
+function App() {
+  const [state,       setState]       = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [currentId,   setCurrentId]   = useState(null);
+  const [activePid,   setActivePid]   = useState(null);
+  const [input,       setInput]       = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [actionSheet, setActionSheet] = useState(null);
+  const [showNewChat,  setShowNewChat]  = useState(false);
+  const [showPersonas, setShowPersonas] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const bottomRef  = useRef(null);
+  const inputRef   = useRef(null);
+  const pressTimer = useRef(null);
+
+  /* ── Load ── */
+  useEffect(()=>{
+    (async()=>{
+      try {
+        let saved = await idbGet('main');
+        if(!saved) saved = migrateFromLS() || makeDefault();
+        setState(saved);
+        setCurrentId(saved.chats[0]?.id||null);
+        setActivePid(saved.chats[0]?.personaIds[0]||null);
+      } catch(e) {
+        const def=makeDefault();
+        setState(def);
+        setCurrentId(def.chats[0].id);
+        setActivePid(def.chats[0].personaIds[0]);
+      }
+      setLoading(false);
+    })();
+  },[]);
+
+  /* ── Persist ── */
+  useEffect(()=>{ if(state) idbSet('main',state).catch(()=>{}); },[state]);
+
+  /* ── Scroll ── */
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:'smooth'}); },[state,currentId]);
+
+  /* ── Auto-set active persona when switching chats ── */
+  useEffect(()=>{
+    if(!state||!currentId) return;
+    const chat=state.chats.find(c=>c.id===currentId);
+    if(chat&&chat.personaIds.length>0&&!chat.personaIds.includes(activePid))
+      setActivePid(chat.personaIds[0]);
+  },[currentId]);
+
+  if(loading) return <div className="loading">💬</div>;
+
+  /* ── Derived ── */
+  const update = fn => setState(prev=>fn(prev));
+  const chat     = state.chats.find(c=>c.id===currentId)||null;
+  const chatPers = chat ? state.personas.filter(p=>chat.personaIds.includes(p.id)) : [];
+  const activePer= state.personas.find(p=>p.id===activePid)||chatPers[0]||null;
+  const appName  = state.settings.appName||'Me, Myself & I';
+
+  /* ── Send ── */
+  const send = () => {
+    const text=input.trim();
+    if(!text||!chat||!activePer) return;
+    const msg={id:uid(),senderId:activePer.id,text,ts:Date.now()};
+    update(s=>({...s,chats:s.chats.map(c=>c.id===currentId?{...c,messages:[...c.messages,msg],updatedAt:Date.now()}:c)}));
+    setInput('');
+    inputRef.current?.focus();
+  };
+  const onKey=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}};
+
+  /* ── Long press ── */
+  const startPress=msgId=>{
+    pressTimer.current=setTimeout(()=>{
+      if(navigator.vibrate) navigator.vibrate(40);
+      const m=chat?.messages.find(x=>x.id===msgId);
+      if(m) setActionSheet(m);
+    },480);
+  };
+  const endPress=()=>clearTimeout(pressTimer.current);
+
+  /* ── Message actions ── */
+  const deleteMsg=id=>{
+    update(s=>({...s,chats:s.chats.map(c=>c.id===currentId?{...c,messages:c.messages.filter(m=>m.id!==id)}:c)}));
+    setActionSheet(null);
+  };
+  const copyMsg=text=>{ navigator.clipboard?.writeText(text).catch(()=>{}); setActionSheet(null); };
+
+  /* ── Chat actions ── */
+  const createChat=({title,personaIds,newPersona})=>{
+    let pers=[...state.personas]; let pIds=[...personaIds];
+    if(newPersona){
+      const np={id:uid(),name:newPersona.name,emoji:newPersona.emoji,colorIdx:newPersona.colorIdx??pers.length%PALETTE.length};
+      pers=[...pers,np]; pIds=[...pIds,np.id];
+    }
+    if(pIds.length===0) pIds=pers.map(p=>p.id);
+    const newChat={id:uid(),title:title||(state.chats.length===0?'My First Chat':`Chat ${state.chats.length+1}`),
+      personaIds:pIds,messages:[],createdAt:Date.now(),updatedAt:Date.now()};
+    update(s=>({...s,personas:pers,chats:[newChat,...s.chats]}));
+    setCurrentId(newChat.id);
+    setActivePid(pIds[0]);
+    setShowNewChat(false);
+  };
+
+  const deleteChat=id=>{
+    if(!window.confirm('Delete this chat and all its messages?')) return;
+    update(s=>({...s,chats:s.chats.filter(c=>c.id!==id)}));
+    if(currentId===id){
+      const rest=state.chats.filter(c=>c.id!==id);
+      setCurrentId(rest[0]?.id||null);
+    }
+  };
+
+  const renameChat=(id,title)=>{
+    if(!title) return;
+    update(s=>({...s,chats:s.chats.map(c=>c.id===id?{...c,title}:c)}));
+  };
+
+  /* ── Persona actions ── */
+  const handlePersonaUpdate=action=>{
+    update(s=>{
+      if(action.type==='add'){
+        const np={id:uid(),name:action.name,emoji:action.emoji,colorIdx:action.colorIdx??s.personas.length%PALETTE.length};
+        return {...s,personas:[...s.personas,np]};
+      }
+      if(action.type==='edit'){
+        return {...s,personas:s.personas.map(p=>p.id===action.id?{...p,name:action.name,emoji:action.emoji,colorIdx:action.colorIdx}:p)};
+      }
+      if(action.type==='delete'){
+        return {...s,personas:s.personas.filter(p=>p.id!==action.id),
+          chats:s.chats.map(c=>({...c,personaIds:c.personaIds.filter(id=>id!==action.id)}))};
+      }
+      return s;
+    });
+  };
+
+  /* ── Export / Import ── */
+  const exportBackup=()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`selfchat-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  };
+  const importBackup=file=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      try {
+        const data=JSON.parse(e.target.result);
+        if(data.personas&&data.chats&&data.settings){
+          if(window.confirm('This replaces all current data. Continue?')){
+            setState(data); setCurrentId(data.chats[0]?.id||null); setShowSettings(false);
+          }
+        } else alert('Invalid backup file.');
+      } catch{alert('Could not read file.');}
+    };
+    r.readAsText(file);
+  };
+  const clearAllData=()=>{
+    if(window.confirm('Delete ALL chats and messages? This cannot be undone.')){
+      const def=makeDefault();
+      setState({...state,chats:[],personas:state.personas});
+      setCurrentId(null);
+      setShowSettings(false);
+    }
+  };
+
+  /* ── Build render items (with date separators) ── */
+  const renderItems=[];
+  if(chat){
+    let lastDK=null;
+    chat.messages.forEach(msg=>{
+      const dk=midnight(msg.ts);
+      if(dk!==lastDK){renderItems.push({type:'date',key:`d-${dk}`,ts:msg.ts});lastDK=dk;}
+      renderItems.push({type:'msg',key:`m-${msg.id}`,...msg});
+    });
+  }
+
+  return (
+    <div className="shell">
+      {/* Sidebar */}
+      <Sidebar
+        open={sidebarOpen} onOpen={setSidebarOpen}
+        chats={state.chats} personas={state.personas}
+        currentChatId={currentId} onSelect={setCurrentId}
+        onNewChat={()=>setShowNewChat(true)} onDelete={deleteChat} onRename={renameChat}
+        appName={appName}
+        onPersonas={()=>setShowPersonas(true)} onSettings={()=>setShowSettings(true)}
+      />
+
+      {/* Main */}
+      <div className="main-area">
+
+        {/* Header */}
+        <div className="header">
+          <div className="hdr-left">
+            <button className="icon-btn" onClick={()=>setSidebarOpen(true)} style={{fontSize:22}}>☰</button>
+            {chat?(
+              <div style={{minWidth:0}}>
+                <div className="hdr-title">{chat.title||'Untitled Chat'}</div>
+                <div className="hdr-sub">{chatPers.map(p=>p.emoji).join(' ')} · {chat.messages.length} msg{chat.messages.length!==1?'s':''}</div>
+              </div>
+            ):<div className="hdr-title">{appName}</div>}
+          </div>
+          <div className="hdr-actions">
+            <button className="icon-btn" onClick={()=>setShowPersonas(true)} title="Manage voices">🎭</button>
+            <button className="icon-btn" onClick={()=>setShowSettings(true)} title="Settings">⚙️</button>
+          </div>
+        </div>
+
+        {/* No chat selected */}
+        {!chat?(
+          <div className="no-chat">
+            <div style={{fontSize:56}}>💬</div>
+            <div style={{fontSize:17,color:'#888'}}>No chat selected</div>
+            <button className="cta-btn" onClick={()=>setShowNewChat(true)}>+ Start a new chat</button>
+          </div>
+        ):(
+          <>
+            {/* Messages */}
+            <div className="chat-area" onTouchMove={endPress}>
+              {chat.messages.length===0&&(
+                <div className="empty-chat">
+                  <div style={{fontSize:42}}>💬</div>
+                  <div>Start the conversation</div>
+                </div>
+              )}
+              {renderItems.map(item=>{
+                if(item.type==='date') return <div key={item.key} className="date-stamp">{getDateLabel(item.ts)}</div>;
+                const msg=item;
+                const persona=state.personas.find(p=>p.id===msg.senderId);
+                const c=persona?getColor(persona):{accent:'#999',bubble:'#eee',lbl:'#555'};
+                const isSelf=msg.senderId===activePid;
+                return (
+                  <div key={msg.key} className={`msg-row ${isSelf?'right':'left'}`}
+                    onTouchStart={()=>startPress(msg.id)} onTouchEnd={endPress}
+                    onMouseDown={()=>startPress(msg.id)} onMouseUp={endPress} onMouseLeave={endPress}
+                    onContextMenu={e=>{e.preventDefault();const m=chat.messages.find(x=>x.id===msg.id);if(m)setActionSheet(m);}}>
+                    {!isSelf&&<div className="av-bubble">{persona?.emoji||'?'}</div>}
+                    <div className={`bubble ${isSelf?'right':'left'}`} style={{background:c.bubble}}>
+                      {!isSelf&&<div className="sender-label" style={{color:c.lbl}}>{persona?.name||'Unknown'}</div>}
+                      <div className="msg-text">{msg.text}</div>
+                      <div className="time-row">
+                        <span className="time-txt">{fmtTime(msg.ts)}</span>
+                        {isSelf&&<span className="tick">✓✓</span>}
+                      </div>
+                    </div>
+                    {isSelf&&<div className="av-bubble">{persona?.emoji||'?'}</div>}
+                  </div>
+                );
+              })}
+              <div ref={bottomRef}/>
+            </div>
+
+            {/* Persona switcher */}
+            {chatPers.length>0&&(
+              <div className="ps-bar">
+                <div className="ps-scroll">
+                  {chatPers.map(p=>{
+                    const c=getColor(p); const isActive=p.id===activePid;
+                    return (
+                      <button key={p.id}
+                        className={`ps-chip ${isActive?'ps-chip-active':''}`}
+                        style={isActive?{background:c.bubble,borderColor:c.accent,color:c.lbl}:{}}
+                        onClick={()=>{setActivePid(p.id);setTimeout(()=>inputRef.current?.focus(),50);}}>
+                        {p.emoji} {p.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="input-bar"
+              style={{borderTop:`2px solid ${activePer?getColor(activePer).accent+'55':'#ddd'}`}}>
+              <textarea ref={inputRef} className="msg-input"
+                style={{borderColor:activePer?getColor(activePer).accent:'#ddd'}}
+                value={input} onChange={e=>setInput(e.target.value)} onKeyDown={onKey}
+                placeholder={activePer?`${activePer.name} says...`:'Select a voice above…'}
+                rows={1} disabled={!activePer}/>
+              <button className="send-btn"
+                style={{background:activePer&&input.trim()?getColor(activePer).accent:'#ccc'}}
+                onClick={send} disabled={!input.trim()||!activePer}>➤</button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Modals */}
+      {showNewChat&&<NewChatModal personas={state.personas} onConfirm={createChat} onClose={()=>setShowNewChat(false)}/>}
+      {showPersonas&&<PersonasModal personas={state.personas} onUpdate={handlePersonaUpdate} onClose={()=>setShowPersonas(false)}/>}
+      {showSettings&&(
+        <SettingsModal settings={state.settings}
+          onUpdate={s=>update(prev=>({...prev,settings:{...prev.settings,...s}}))}
+          onExport={exportBackup} onImport={importBackup} onClearAll={clearAllData}
+          onClose={()=>setShowSettings(false)}/>
+      )}
+      {actionSheet&&(
+        <ActionSheet msg={actionSheet}
+          onCopy={()=>copyMsg(actionSheet.text)}
+          onDelete={()=>deleteMsg(actionSheet.id)}
+          onClose={()=>setActionSheet(null)}/>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(e => console.error('SW failed:', e));
+    });
+  }
+</script>
+</body>
+</html>
