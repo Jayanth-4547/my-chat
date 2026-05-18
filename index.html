@@ -161,6 +161,10 @@ body{background:#ece5dd;font-family:'Segoe UI',Helvetica,Arial,sans-serif;overfl
 </head>
 <body>
 <div id="root"></div>
+<script>
+window.process = { env: {} };
+window.global = window;
+</script>
 <script type="text/babel">
 const {useState,useRef,useEffect} = React;
 
