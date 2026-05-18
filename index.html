@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Me, Myself & I</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body,#root{height:100%;width:100%;}
+body{background:#ece5dd;font-family:'Segoe UI',Helvetica,Arial,sans-serif;overflow:hidden;}
+
+/* ── Layout ── */
+.shell{position:relative;height:100dvh;width:100%;max-width:480px;margin:0 auto;overflow:hidden;}
+.main-area{position:absolute;inset:0;display:flex;flex-direction:column;}
+
+/* ── Sidebar ── */
+.sb-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.42);z-index:199;}
+.sidebar{position:absolute;top:0;left:0;bottom:0;width:min(300px,85vw);background:white;z-index:200;transform:translateX(-110%);transition:transform 0.28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,0.2);}
+.sb-open{transform:translateX(0);}
+.sb-head{background:#075e54;color:white;padding:14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-appname{font-size:16px;font-weight:700;}
+.sb-close{background:rgba(255,255,255,0.18);border:none;width:30px;height:30px;border-radius:50%;color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.new-chat-btn{background:#25d366;color:white;border:none;margin:10px 12px 4px;padding:11px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.new-chat-btn:active{opacity:0.85;}
+.chat-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.chat-list::-webkit-scrollbar{width:3px;}
+.chat-list::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.1);border-radius:4px;}
+.chat-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background 0.1s;}
+.chat-item:active,.ci-active{background:#e8f5e9;}
+.ci-avatars{width:44px;height:44px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;}
+.ci-info{flex:1;min-width:0;}
+.ci-title{font-size:14px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-preview{font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.ci-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.ci-time{font-size:11px;color:#bbb;}
+.ci-actions{display:flex;gap:1px;}
+.ci-btn{background:none;border:none;font-size:14px;cursor:pointer;padding:3px;opacity:0.45;}
+.ci-btn:active{opacity:1;}
+.rename-input{width:100%;border:1.5px solid #25d366;border-radius:6px;padding:4px 7px;font-size:13.5px;font-family:inherit;outline:none;}
+.sb-bottom{border-top:1px solid #f0f0f0;padding:6px 10px 10px;display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.sb-bot-btn{background:none;border:none;padding:10px 12px;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;color:#555;display:flex;align-items:center;gap:9px;}
+.sb-bot-btn:active{background:#f0f0f0;}
+
+/* ── Header ── */
+.header{background:#075e54;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.2);flex-shrink:0;z-index:10;}
+.hdr-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
+.hdr-title{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-sub{font-size:11px;opacity:0.8;margin-top:1px;}
+.hdr-actions{display:flex;gap:1px;flex-shrink:0;}
+.icon-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:50%;color:white;transition:background 0.15s;}
+.icon-btn:active{background:rgba(255,255,255,0.18);}
+
+/* ── Empty states ── */
+.no-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#ece5dd;}
+.cta-btn{background:#25d366;color:white;border:none;padding:13px 28px;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit;}
+.empty-chat{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#bbb;gap:8px;font-size:15px;padding-bottom:40px;}
+
+/* ── Chat area ── */
+.chat-area{flex:1;overflow-y:auto;padding:10px 8px 6px;display:flex;flex-direction:column;gap:2px;
+  background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c5b8ad' fill-opacity='0.18'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  -webkit-overflow-scrolling:touch;}
+.chat-area::-webkit-scrollbar{width:3px;}
+.chat-area::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.1);border-radius:4px;}
+.date-stamp{text-align:center;font-size:11.5px;color:#6b6b6b;background:rgba(255,255,255,0.78);border-radius:10px;padding:4px 12px;align-self:center;margin:8px 0 5px;letter-spacing:0.5px;font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,0.07);}
+
+/* ── Messages ── */
+.msg-row{display:flex;align-items:flex-end;gap:5px;margin-bottom:1px;user-select:none;-webkit-user-select:none;}
+.msg-row.right{justify-content:flex-end;}
+.msg-row.left{justify-content:flex-start;}
+.av-bubble{width:28px;height:28px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.13);}
+.bubble{max-width:73%;border-radius:18px;padding:7px 11px 5px;box-shadow:0 1px 2px rgba(0,0,0,0.1);}
+.bubble.right{border-top-right-radius:4px;}
+.bubble.left{border-top-left-radius:4px;}
+.sender-label{font-size:11px;font-weight:700;margin-bottom:3px;}
+.msg-text{font-size:14.5px;line-height:1.45;color:#111;word-break:break-word;white-space:pre-wrap;}
+.time-row{display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:3px;}
+.time-txt{font-size:10.5px;color:#6b7c7b;}
+.tick{font-size:11px;color:#53bdeb;}
+
+/* ── Persona switcher ── */
+.ps-bar{background:white;border-top:1px solid #e8e8e8;padding:6px 10px;flex-shrink:0;}
+.ps-scroll{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px;}
+.ps-scroll::-webkit-scrollbar{display:none;}
+.ps-chip{background:#f2f2f2;border:2px solid transparent;border-radius:20px;padding:6px 12px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit;font-weight:500;color:#666;transition:all 0.15s;flex-shrink:0;}
+.ps-chip:active{opacity:0.8;}
+.ps-chip-active{font-weight:700;}
+
+/* ── Input bar ── */
+.input-bar{background:#f0f0f0;padding:7px 9px;display:flex;align-items:flex-end;gap:7px;flex-shrink:0;}
+.msg-input{flex:1;border:2px solid #ddd;border-radius:22px;padding:9px 14px;font-size:14.5px;outline:none;resize:none;font-family:inherit;line-height:1.4;transition:border-color 0.2s;background:white;max-height:100px;overflow-y:auto;}
+.send-btn{width:42px;height:42px;border-radius:50%;border:none;color:white;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,transform 0.1s;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+.send-btn:not([disabled]):active{transform:scale(0.92);}
+
+/* ── Overlays & Modals ── */
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:300;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 0.15s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(28px);opacity:0}to{transform:none;opacity:1}}
+.modal-sheet{background:#f5f5f5;border-radius:18px 18px 0 0;width:100%;max-height:88vh;display:flex;flex-direction:column;animation:slideUp 0.22s cubic-bezier(.4,0,.2,1);}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;background:white;border-radius:18px 18px 0 0;border-bottom:1px solid #ececec;flex-shrink:0;}
+.modal-title{font-size:16px;font-weight:700;color:#111;}
+.close-btn{background:#efefef;border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;color:#666;display:flex;align-items:center;justify-content:center;}
+.modal-body{padding:16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;}
+.modal-footer{padding:10px 16px 20px;border-top:1px solid #ececec;flex-shrink:0;}
+
+/* ── Form elements ── */
+.field-label{font-size:11px;font-weight:700;color:#aaa;letter-spacing:0.8px;text-transform:uppercase;display:block;margin-bottom:6px;}
+.text-field{width:100%;border:1.5px solid #ddd;border-radius:10px;padding:9px 12px;font-size:14.5px;font-family:inherit;outline:none;background:white;}
+.text-field:focus{border-color:#25d366;}
+.hint{font-size:12px;color:#bbb;line-height:1.5;}
+
+.p-check-row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:white;border-radius:12px;margin-bottom:7px;cursor:pointer;border-left:4px solid transparent;transition:background 0.12s;}
+.p-check-row:active{background:#f5f5f5;}
+.p-check-row.checked{background:#f0faf2;}
+.pck-emoji{font-size:22px;width:30px;text-align:center;}
+.pck-name{flex:1;font-size:14px;font-weight:500;}
+.pck-tick{font-size:16px;color:#25d366;font-weight:700;width:22px;text-align:right;}
+
+.inline-add-box{background:white;border-radius:12px;padding:12px;margin-top:10px;}
+.modal-action-btn{background:#f0f0f0;border:none;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+.modal-action-btn:active{opacity:0.8;}
+.btn-green{background:#25d366;color:white;}
+.modal-confirm-btn{width:100%;background:#25d366;color:white;border:none;padding:13px;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.modal-confirm-btn:disabled{background:#ccc;}
+.modal-confirm-btn:not(:disabled):active{opacity:0.85;}
+
+/* ── Persona manage cards ── */
+.p-card{background:white;border-radius:14px;margin-bottom:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+.p-card-row{display:flex;align-items:center;gap:10px;}
+.p-card-name{flex:1;font-size:15px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.p-card-btn{background:none;border:none;font-size:17px;cursor:pointer;padding:4px;}
+.save-btn{background:#25d366;color:white;border:none;border-radius:10px;padding:7px 13px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;}
+.emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:10px;}
+.emoji-opt{background:#f7f7f7;border:2px solid transparent;border-radius:8px;font-size:22px;cursor:pointer;padding:4px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;transition:all 0.12s;}
+.emoji-opt.em-sel{background:#e8f5e9;border-color:#25d366;}
+.color-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+.color-dot{width:26px;height:26px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform 0.1s;}
+.color-dot.c-sel{border-color:rgba(0,0,0,0.35);transform:scale(1.2);}
+.section-lbl{font-size:11px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;display:block;margin:14px 0 8px;}
+.settings-btn{width:100%;padding:13px;border-radius:14px;border:none;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;}
+.settings-btn:active{opacity:0.8;}
+.btn-export{background:#e8f5fd;color:#2980b9;}
+.btn-import{background:#e8f5e9;color:#27ae60;}
+.btn-clear-all{background:#fdecea;color:#e74c3c;}
+
+/* ── Action sheet ── */
+.action-sheet{background:white;border-radius:18px 18px 0 0;width:100%;padding:0 0 20px;animation:slideUp 0.2s cubic-bezier(.4,0,.2,1);}
+.action-preview{padding:12px 20px;font-size:13px;color:#888;border-bottom:1px solid #f0f0f0;font-style:italic;line-height:1.4;}
+.action-btn{width:100%;background:none;border:none;padding:14px 22px;font-size:15.5px;text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px;color:#222;transition:background 0.1s;}
+.action-btn:active{background:#f5f5f5;}
+.action-danger{color:#e74c3c;}
+.action-cancel{color:#888;font-weight:600;border-top:1px solid #f0f0f0;margin-top:4px;}
+
+/* ── Loading ── */
+.loading{display:flex;align-items:center;justify-content:center;height:100dvh;font-size:36px;background:#ece5dd;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useRef,useEffect} = React;
+
+/* ══ IndexedDB ══════════════════════════════════════════════ */
+let _idb = null;
+const openIDB = () => new Promise((res,rej) => {
+  if(_idb){res(_idb);return;}
+  const r = indexedDB.open('selfchat_v2',1);
+  r.onupgradeneeded = e => { const db=e.target.result; if(!db.objectStoreNames.contains('data')) db.createObjectStore('data'); };
+  r.onsuccess = e => { _idb=e.target.result; res(_idb); };
+  r.onerror = () => rej(r.error);
+});
+const idbGet = async key => { const db=await openIDB(); return new Promise((res,rej)=>{ const r=db.transaction('data','readonly').objectStore('data').get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); };
+const idbSet = async (key,val) => { const db=await openIDB(); return new Promise((res,rej)=>{ const r=db.transaction('data','readwrite').objectStore('data').put(val,key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); };
+
+/* ══ Constants ══════════════════════════════════════════════ */
+const EMOJIS = ["🧠","💭","😎","🤔","😇","😈","🦋","🌙","☀️","🔥","💫","🎭","👾","🦄","💡","🌊","🍀","⚡","🎯","🌈","🦊","🐼","🦁","🐉","🌺"];
+const PALETTE = [
+  {accent:'#25d366',bubble:'#dcf8c6',lbl:'#1a6e35'},
+  {accent:'#9b59b6',bubble:'#e8d5ff',lbl:'#6a2d8f'},
+  {accent:'#e67e22',bubble:'#fde3c3',lbl:'#7a3800'},
+  {accent:'#2980b9',bubble:'#d5eafc',lbl:'#1a5a8a'},
+  {accent:'#e74c3c',bubble:'#fcdcda',lbl:'#8a1a1a'},
+  {accent:'#16a085',bubble:'#c5f0e6',lbl:'#0a5a45'},
+  {accent:'#d35400',bubble:'#fde0c8',lbl:'#7a2a00'},
+  {accent:'#8e44ad',bubble:'#ead5f9',lbl:'#5a1a7a'},
+];
+const uid = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
+const getColor = p => PALETTE[(p.colorIdx||0) % PALETTE.length];
+
+/* ══ Date helpers ══════════════════════════════════════════ */
+const midnight = ts => { const d=new Date(ts); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); };
+const getDateLabel = ts => {
+  const diff = Math.round((midnight(Date.now())-midnight(ts))/86400000);
+  if(diff===0) return 'Today'; if(diff===1) return 'Yesterday';
+  if(diff<7) return new Date(ts).toLocaleDateString('en-US',{weekday:'long'});
+  return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+};
+const fmtTime = ts => new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const fmtPreview = ts => {
+  const diff = Math.round((midnight(Date.now())-midnight(ts))/86400000);
+  if(diff===0) return fmtTime(ts); if(diff===1) return 'Yesterday';
+  return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+};
+
+/* ══ Default state + migration ══════════════════════════════ */
+const makeDefault = () => {
+  const pA={id:uid(),name:'Inner Voice A',emoji:'🧠',colorIdx:0};
+  const pB={id:uid(),name:'Inner Voice B',emoji:'💭',colorIdx:1};
+  return {
+    personas:[pA,pB],
+    chats:[{id:uid(),title:'My First Chat',personaIds:[pA.id,pB.id],messages:[
+      {id:uid(),senderId:pA.id,text:"Hey... so what are we actually doing with our life? 😅",ts:Date.now()-300000},
+      {id:uid(),senderId:pB.id,text:"Oh great. We're having THIS conversation again.",ts:Date.now()-180000},
+      {id:uid(),senderId:pA.id,text:"Look, someone has to ask it.",ts:Date.now()-60000},
+    ],createdAt:Date.now(),updatedAt:Date.now()}],
+    settings:{appName:'Me, Myself & I'},
+  };
+};
+
+// Auto-migrate from previous localStorage version
+const migrateFromLS = () => {
+  try {
+    const oldMsgs = JSON.parse(localStorage.getItem('sc_msgs')||'null');
+    const oldPers = JSON.parse(localStorage.getItem('sc_personas')||'null');
+    if(!oldMsgs||!oldPers) return null;
+    const sides = Object.keys(oldPers);
+    const personas = sides.map((k,i)=>({id:uid(),name:oldPers[k].name,emoji:oldPers[k].emoji,colorIdx:i}));
+    const keyMap = {}; sides.forEach((k,i)=>keyMap[k]=personas[i].id);
+    const msgs = oldMsgs.map(m=>({id:uid(),senderId:keyMap[m.sender]||personas[0].id,text:m.text,ts:m.ts||Date.now()}));
+    const chat={id:uid(),title:'My Chat',personaIds:personas.map(p=>p.id),messages:msgs,createdAt:Date.now(),updatedAt:Date.now()};
+    return {personas,chats:[chat],settings:{appName:'Me, Myself & I'}};
+  } catch(e){return null;}
+};
+
+/* ══════════════════════════════════════════════════════════
+   NEW CHAT MODAL
+══════════════════════════════════════════════════════════ */
+function NewChatModal({personas,onConfirm,onClose}) {
+  const [title,setTitle]=useState('');
+  const [sel,setSel]=useState(personas.map(p=>p.id));
+  const [addMode,setAddMode]=useState(personas.length===0);
+  const [newName,setNewName]=useState('');
+  const [newEmoji,setNewEmoji]=useState('😎');
+  const [newColorIdx,setNewColorIdx]=useState(personas.length%PALETTE.length);
+
+  const toggle = id => setSel(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const allSel = sel.length===personas.length && personas.length>0;
+
+  const confirm = () => {
+    if(sel.length===0&&!addMode) return;
+    onConfirm({title:title.trim()||undefined,personaIds:sel});
+  };
+
+  const confirmWithNew = () => {
+    if(!newName.trim()) return;
+    onConfirm({title:title.trim()||undefined,personaIds:sel,newPersona:{name:newName.trim(),emoji:newEmoji,colorIdx:newColorIdx}});
+  };
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+        <div className="modal-head">
+          <span className="modal-title">✨ New Chat</span>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <label className="field-label">Chat title (optional)</label>
+          <input className="text-field" value={title} onChange={e=>setTitle(e.target.value)}
+            placeholder={`Chat ${Date.now().toString().slice(-3)}`} maxLength={40}/>
+
+          {personas.length>0 && (
+            <>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',margin:'14px 0 8px'}}>
+                <span className="field-label" style={{margin:0}}>Voices in this chat</span>
+                <button className="modal-action-btn" style={{padding:'4px 10px',fontSize:12}}
+                  onClick={()=>setSel(allSel?[]:personas.map(p=>p.id))}>
+                  {allSel?'Deselect all':'Select all'}
+                </button>
+              </div>
+              {personas.map(p=>{
+                const c=getColor(p); const checked=sel.includes(p.id);
+                return (
+                  <div key={p.id} className={`p-check-row ${checked?'checked':''}`}
+                    style={{borderLeftColor:c.accent}} onClick={()=>toggle(p.id)}>
+                    <span className="pck-emoji">{p.emoji}</span>
+                    <span className="pck-name">{p.name}</span>
+                    <span className="pck-tick">{checked?'✓':''}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {!addMode?(
+            <button className="modal-action-btn" style={{marginTop:10,width:'100%',padding:11}} onClick={()=>setAddMode(true)
