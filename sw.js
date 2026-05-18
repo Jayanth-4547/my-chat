@@ -39,19 +39,40 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+
 // Fetch: cache-first for all requests
 self.addEventListener('fetch', e => {
+  // Ignore non-HTTP requests (like chrome-extension://)
+  if (!e.request.url.startsWith('http')) return;
+
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
         // Cache fresh responses for future offline use
-        if (res && res.status === 200) {
+        if (res && res.status === 200 && res.type === 'basic') {
           const clone = res.clone();
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
         return res;
       }).catch(() => cached); // if network fails, return whatever we have
     })
+  );
+});
+
+// // Fetch: cache-first for all requests
+// self.addEventListener('fetch', e => {
+//   e.respondWith(
+//     caches.match(e.request).then(cached => {
+//       if (cached) return cached;
+//       return fetch(e.request).then(res => {
+//         // Cache fresh responses for future offline use
+//         if (res && res.status === 200) {
+//           const clone = res.clone();
+//           caches.open(CACHE).then(cache => cache.put(e.request, clone));
+//         }
+//         return res;
+//       }).catch(() => cached); // if network fails, return whatever we have
+//     })
   );
 });
